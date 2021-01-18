@@ -1,0 +1,35 @@
+exp:
+  path: resnet_cam
+  checkpoint_dir: checkpoint
+  tensorboard_dir: runs
+  preds: preds
+  cam: cam
+  results: results
+  final_weights: resnet_cam.pth
+
+dataset:
+  root_dir: /data1/rlx/VOC2012/VOCdevkit/VOC2012
+  txt_dir: dataset/voc
+  n_classes: 20
+  mean_bgr: [104.008, 116.669, 122.675]
+  std_bgr: [104.008, 116.669, 122.675]
+
+model:
+  blocks: [3, 4, 23, 3]
+
+train:
+  split: train_aug
+  batch_size: 16
+  max_epoches: 6
+  update_iters: 1
+  save_iters: 100
+  crop_size: 521
+  scales: [0.5, 0.75, 1.0, 1.25, 1.5]
+  opt:
+    learning_rate: 1e-2
+    weight_decay: 5e-4
+    momentum: 0.9
+    power: 0.9
+
+val:
+  split: val
