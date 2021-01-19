@@ -49,21 +49,23 @@ class VOCDataset(Dataset):
         image, mask = imutils.img_random_scaling(image, mask, scales=self.scales)
         image = imutils.img_normalize(image)
         image, mask = imutils.img_random_fliplr(image, mask, )
-        image, mask = imutils.img_random_centralcrop(image, mask, crop_size=self.crop_size)
+        image, mask = imutils.img_random_crop(image, mask, crop_size=self.crop_size)
         image = imutils.img_to_CHW(image)
 
         return image, mask
 
 class VOClassificationDataset(VOCDataset):
-    def __init__(self, root_dir, txt_dir=None, n_classes=20, split='train', crop_size=None, scales=None, resize_long=None):
+    def __init__(self, root_dir, txt_dir=None, n_classes=20, split='train', augment=True, crop_size=None, scales=None, resize_long=None):
         super(VOClassificationDataset, self).__init__(root_dir, txt_dir, split, crop_size, scales)
         self.resize_long = resize_long
         self.n_classes = n_classes
+        self.augment = augment
 
     def __getitem__(self, idx):
 
         image, mask = self._load_image(idx)
-        image, mask = self._augmentation(image, mask)
+        if self.augment:
+            image, mask = self._augmentation(image, mask)
         label = get_label_from_mask(mask, n_classes=self.n_classes)
         
         return self.name_list[idx], image, label

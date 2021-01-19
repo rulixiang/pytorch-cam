@@ -5,7 +5,7 @@ from datetime import datetime
 
 TIMESTAMP = "{0:%Y-%m-%d-%H-%M-%S/}".format(datetime.now())
 parser = argparse.ArgumentParser()
-parser.add_argument("--gpu", default='0,1', type=str, help="gpu")
+parser.add_argument("--gpu", default='1', type=str, help="gpu")
 parser.add_argument("--config", default='configs/voc.yaml', type=str, help="config")
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -24,8 +24,7 @@ from tqdm import tqdm
 import utils
 from dataset import voc
 from net import resnet_cam
-from utils import imutils
-
+from utils import imutils, pyutils
 
 def makedirs(path):
     if os.path.exists(path) is False:
@@ -59,46 +58,38 @@ def validate(model=None, criterion=None, data_loader=None, writer=None):
 
     print('Validating...')
 
-    val_loss = 0.0
-    preds, gts = [], []
+    val_loss_meter = pyutils.AverageMeter('loss')
     model.eval()
 
     with torch.no_grad():
-        for _, data in tqdm(enumerate(data_loader), total=len(data_loader), ascii=' 123456789>'):
+        for _, data in tqdm(enumerate(data_loader), total=len(data_loader), ascii=' 123456789#'):
             _, inputs, labels = data
 
             #inputs = inputs.to()
             #labels = labels.to(inputs.device)
 
             outputs = model(inputs)
-            labels = labels.long().to(outputs.device)
+            labels = labels.to(outputs.device)
 
-            resized_outputs = F.interpolate(outputs, size=inputs.shape[2:], mode='bilinear', align_corners=True)
-
-            loss = criterion(resized_outputs, labels)
-            val_loss += loss
-
-            preds += list(torch.argmax(resized_outputs, dim=1).cpu().numpy().astype(np.int16))
-            gts += list(labels.cpu().numpy().astype(np.int16))
+            loss = F.multilabel_soft_margin_loss(outputs, labels)
+            val_loss_meter.add({'loss': loss.item()})
 
     model.train()
 
-    score = pyutils.scores(gts, preds)
-
-    return val_loss.cpu().numpy() / float(len(data_loader)), score
+    return val_loss_meter.pop('loss')
 
 def train(config=None):
     # loop over the dataset multiple times
 
     num_workers = config.train.batch_size * 2 
 
-    train_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, n_classes=config.dataset.n_classes, split=config.train.split, crop_size=config.train.crop_size, scales=config.train.scales)
+    train_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, augment=True, n_classes=config.dataset.n_classes, split=config.train.split, crop_size=config.train.crop_size, scales=config.train.scales)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.train.batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, drop_last=True)
 
-    val_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, n_classes=config.dataset.n_classes, split=config.val.split, crop_size=config.train.crop_size, scales=config.train.scales)
+    val_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, augment=True, n_classes=config.dataset.n_classes, split=config.val.split, crop_size=config.train.crop_size, scales=config.train.scales)
 
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=1, shuffle=False, num_workers=num_workers, pin_memory=True, drop_last=False)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.train.batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, drop_last=False)
 
     # device
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -118,8 +109,8 @@ def train(config=None):
     # save model to tensorboard 
     writer_path = os.path.join(config.exp.path, config.exp.tensorboard_dir, TIMESTAMP)
     writer = SummaryWriter(writer_path)
-    dummy_input = torch.rand(2, 3, 512, 512)
-    #writer.add_graph(model, dummy_input)
+    dummy_input = torch.rand(4, 3, 512, 512)
+    writer.add_graph(model, dummy_input)
 
 
     model = nn.DataParallel(model)
@@ -149,12 +140,13 @@ def train(config=None):
     makedirs(os.path.join(config.exp.path, config.exp.tensorboard_dir))
     
     iteration = 0
+    train_loss_meter = pyutils.AverageMeter('loss')
 
-    for epoch in range(config.train.max_epoches):
+    for epoch in range(config.train.max_epochs):
         running_loss = 0.0
-        print('Training epoch %d ...'%(epoch))
+        print('Training epoch %d / %d ...'%(epoch, config.train.max_epochs))
 
-        for _, data in tqdm(enumerate(train_loader), total=len(train_loader), ascii=' 123456789>', dynamic_ncols=True):
+        for _, data in tqdm(enumerate(train_loader), total=len(train_loader), ascii=' 123456789#', dynamic_ncols=True):
 
             _, inputs, labels = data
             inputs =  inputs.to(device)
@@ -170,14 +162,15 @@ def train(config=None):
             loss.backward()
             optimizer.step()
     
-            running_loss += loss.item()
+            #running_loss += loss.item()
+            train_loss_meter.add({'loss':loss.item()})
 
             iteration += 1
             ## poly scheduler
             
             for group in optimizer.param_groups:
                 #g.setdefault('initial_lr', g['lr'])
-                group['lr'] = group['initial_lr']*(1 - float(iteration) / config.train.max_epoches / len(train_loader)) ** config.train.opt.power
+                group['lr'] = group['initial_lr']*(1 - float(iteration) / config.train.max_epochs / len(train_loader)) ** config.train.opt.power
 
         # save to tensorboard
         '''
@@ -193,10 +186,9 @@ def train(config=None):
         writer.add_image("train/preds", grid_outputs, global_step=epoch)
         writer.add_image("train/labels", grid_labels, global_step=epoch)
         '''
-        train_loss = running_loss / len(train_loader)
-        print(train_loss)
-        #val_loss, score = validate(model=model, criterion=criterion, data_loader=val_loader, writer=None)
-        #print('train loss: %f, val loss: %f, val pixel accuracy: %f, val mIoU: %f\n'%(train_loss, val_loss, score['Pixel Accuracy'], score['Mean IoU']))
+        train_loss = train_loss_meter.pop('loss')
+        val_loss = validate(model=model, data_loader=val_loader, writer=None)
+        print('train loss: %f, val loss: %f\n'%(train_loss, val_loss))
 
         #writer.add_scalars("loss", {'train':train_loss, 'val':val_loss}, global_step=epoch)
         #writer.add_scalar("val/acc", scalar_value=score['Pixel Accuracy'], global_step=epoch)

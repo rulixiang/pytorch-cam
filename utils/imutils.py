@@ -41,7 +41,7 @@ def img_random_scaling(image, mask=None, scales=None):
     
     return new_image, mask
 
-def img_random_centralcrop(image, mask=None, crop_size=None):
+def img_random_crop(image, mask=None, crop_size=None):
     '''
     after image normalization
     '''

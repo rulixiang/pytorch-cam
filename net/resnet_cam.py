@@ -33,10 +33,15 @@ class ResNet_CAM(nn.Module):
         x3 = self.stage3(x2)
         x4 = self.stage4(x3)
 
+        out = F.adaptive_avg_pool2d(x4, (1,1))
         out = self.classifier(x4)
-        out = F.adaptive_avg_pool2d(out, (1,1))
         out = out.view(-1, self.n_classes)
-        return out
+
+        cam = F.conv2d(x4, self.classifier.weight)
+        cam = F.relu(cam)   
+        #cam = torch.max(cam[0], cam[1].flip(-1))
+
+        return out, cam
 
     def forward_cam(self, x):
         x0 = self.stem(x)
@@ -47,7 +52,7 @@ class ResNet_CAM(nn.Module):
 
         cam = F.conv2d(x4, self.classifier.weight)
         cam = F.relu(cam)   
-        cam = torch.max(cam[0], cam[1].flip(-1))
+        cam = torch.max(cam[0])
 
         return cam
 
