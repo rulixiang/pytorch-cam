@@ -35,7 +35,7 @@ def img_rescaling(image, scale_factor=1.0):
     h, w, _ = image.shape
     new_scale = [int(scale_factor * w), int(scale_factor * h)]
     new_image = Image.fromarray(image.astype(np.uint8)).resize(new_scale, resample=Image.BILINEAR)
-    new_image = np.asarray(new_image)
+    new_image = np.asarray(new_image).astype(np.float32)
     return new_image.copy()
 
 def img_random_scaling(image, mask=None, scales=None):

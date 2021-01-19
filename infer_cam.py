@@ -26,29 +26,6 @@ def makedirs(path):
         os.makedirs(path)
     return True
 
-def get_params(model, key):
-
-    if key == '1x':
-        for m in model.named_modules():
-            if isinstance(m[1], nn.Conv2d):
-                if m[0]!='module.classifier':
-                    yield m[1].weight
-    if key == '2x':
-        for m in model.named_modules():
-            if isinstance(m[1], nn.Conv2d):
-                if m[0]!='module.classifier':
-                    yield m[1].bias
-    if key == '10x':
-        for m in model.named_modules():
-            if isinstance(m[1], nn.Conv2d):
-                if m[0]=='module.classifier':
-                    yield m[1].weight
-    if key == '20x':
-        for m in model.named_modules():
-            if isinstance(m[1], nn.Conv2d):
-                if m[0]=='module.classifier':
-                    yield m[1].bias
-
 def _infer_cam(pid, model=None, dataset=None, config=None):
 
     data_loader = torch.utils.data.DataLoader(dataset[pid], batch_size=1, shuffle=False, num_workers=2, pin_memory=False)
@@ -67,9 +44,6 @@ def _infer_cam(pid, model=None, dataset=None, config=None):
                 labels = labels.to(outputs.device)
 
             #loss = F.multilabel_soft_margin_loss(outputs, labels)
-
-
-
     return None
 
 def main(config=None):
