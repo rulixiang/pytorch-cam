@@ -104,10 +104,10 @@ def train(config=None):
         device = torch.device('cpu')
 
     # build and initialize model
-    model = resnet_cam.ResNet_CAM(n_classes=config.dataset.n_classes)
+    model = resnet_cam.ResNet(n_classes=config.dataset.n_classes, backbone=config.exp.backbone)
 
     # save model to tensorboard 
-    writer_path = os.path.join(config.exp.path, config.exp.tensorboard_dir, TIMESTAMP)
+    writer_path = os.path.join(config.exp.backbone, config.exp.tensorboard_dir, TIMESTAMP)
     writer = SummaryWriter(writer_path)
     dummy_input = torch.rand(4, 3, 512, 512)
     writer.add_graph(model, dummy_input)
@@ -136,15 +136,15 @@ def train(config=None):
     for group in optimizer.param_groups:
         group.setdefault('initial_lr', group['lr'])
     
-    makedirs(os.path.join(config.exp.path, config.exp.checkpoint_dir))
-    makedirs(os.path.join(config.exp.path, config.exp.tensorboard_dir))
+    makedirs(os.path.join(config.exp.backbone, config.exp.checkpoint_dir))
+    makedirs(os.path.join(config.exp.backbone, config.exp.tensorboard_dir))
     
     iteration = 0
     train_loss_meter = pyutils.AverageMeter('loss')
 
     for epoch in range(config.train.max_epochs):
         running_loss = 0.0
-        print('Training epoch %d / %d ...'%(epoch, config.train.max_epochs))
+        print('Training epoch %d / %d ...'%(epoch+1, config.train.max_epochs))
 
         for _, data in tqdm(enumerate(train_loader), total=len(train_loader), ascii=' 123456789#', dynamic_ncols=True):
 
@@ -187,14 +187,14 @@ def train(config=None):
         writer.add_image("train/labels", grid_labels, global_step=epoch)
         '''
         train_loss = train_loss_meter.pop('loss')
-        val_loss = validate(model=model, data_loader=val_loader, writer=None)
+        val_loss = validate(model=model, data_loader=val_loader)
         print('train loss: %f, val loss: %f\n'%(train_loss, val_loss))
 
         #writer.add_scalars("loss", {'train':train_loss, 'val':val_loss}, global_step=epoch)
         #writer.add_scalar("val/acc", scalar_value=score['Pixel Accuracy'], global_step=epoch)
         #writer.add_scalar("val/miou", scalar_value=score['Mean IoU'], global_step=epoch)
 
-    dst_path = os.path.join(config.exp.path, config.exp.checkpoint_dir, config.exp.final_weights)
+    dst_path = os.path.join(config.exp.backbone, config.exp.checkpoint_dir, config.exp.final_weights)
     torch.save(model.state_dict(), dst_path)
     torch.cuda.empty_cache()
 

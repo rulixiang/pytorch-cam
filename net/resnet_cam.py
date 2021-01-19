@@ -1,16 +1,19 @@
 import torch.nn as nn
 import torch.nn.functional as F
 import torch 
-from .resnet import resnet50
+from .resnet import resnet101, resnet50
 
 
-class ResNet_CAM(nn.Module):
+class ResNet(nn.Module):
 
-    def __init__(self, n_classes=20,):
-        super(ResNet_CAM, self).__init__()
+    def __init__(self, n_classes=20, backbone='resnet50'):
+        super(ResNet, self).__init__()
         self.n_classes = n_classes
 
-        self.resnet = resnet50(pretrained=True, strides=(2, 2, 2, 1))
+        if backbone == 'resnet50':
+            self.resnet = resnet50(pretrained=True, strides=(2, 2, 2, 1))
+        elif backbone == 'resnet101':
+            self.resnet = resnet101(pretrained=True, strides=(2, 2, 2, 1))
 
         self.stem = nn.Sequential(self.resnet.conv1, self.resnet.bn1, self.resnet.relu, self.resnet.maxpool)
         self.stage1 = nn.Sequential(self.resnet.layer1)
@@ -56,7 +59,7 @@ class ResNet_CAM(nn.Module):
         return cam
 
 if __name__ == "__main__":
-    res50 = ResNet_CAM()
+    res50 = ResNet()
     dummy_input = torch.rand(4,3,321,321)
     out = res50(dummy_input)
 

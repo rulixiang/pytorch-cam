@@ -19,7 +19,7 @@ from tqdm import tqdm
 import numpy as np
 from dataset import voc
 from net import resnet_cam
-
+from collections import OrderedDict
 
 def makedirs(path):
     if os.path.exists(path) is False:
@@ -51,21 +51,20 @@ def get_params(model, key):
 
 def _infer_cam(pid, model=None, dataset=None, config=None):
 
-    print('Validating...')
-
     data_loader = torch.utils.data.DataLoader(dataset[pid], batch_size=1, shuffle=False, num_workers=2, pin_memory=False)
     model.eval()
 
     with torch.no_grad(), torch.cuda.device(pid):
         model.cuda()
         for _, data in tqdm(enumerate(data_loader), total=len(data_loader), ascii=' 123456789#'):
-            _, inputs, labels = data
+            _, input_list, labels = data
 
             #inputs = inputs.to()
             #labels = labels.to(inputs.device)
-            inputs =  inputs.cuda()
-            outputs = model.forward_cam(inputs)
-            labels = labels.to(outputs.device)
+            for inputs in input_list:
+                inputs =  inputs[0].cuda()
+                _, outputs = model(inputs)
+                labels = labels.to(outputs.device)
 
             #loss = F.multilabel_soft_margin_loss(outputs, labels)
 
@@ -75,18 +74,9 @@ def _infer_cam(pid, model=None, dataset=None, config=None):
 
 def main(config=None):
 
-    infer_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, augment=True, n_classes=config.dataset.n_classes, split=config.val.split, crop_size=config.train.crop_size, scales=config.train.scales)
+    infer_dataset = voc.VOClassificationDatasetMultiScale(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, n_classes=config.dataset.n_classes, split=config.cam.split, scales=config.cam.scales)
 
     n_gpus = torch.cuda.device_count()
-
-    if torch.cuda.is_available() is True:
-        device = torch.device('cuda')
-        print('%d GPUs are available:'%(n_gpus))
-        for k in range(n_gpus):
-            print('    %s: %s'%(args.gpu.split(',')[k], torch.cuda.get_device_name(k)))
-    else:
-        print('Using CPU:')
-        device = torch.device('cpu')
 
     split_dataset = [torch.utils.data.Subset(infer_dataset, np.arange(i, len(infer_dataset), n_gpus)) for i in range (n_gpus)]
 
@@ -94,13 +84,19 @@ def main(config=None):
     #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # build and initialize model
-    model = resnet_cam.ResNet_CAM(n_classes=config.dataset.n_classes)
-    model_path = os.path.join(config.exp.path, config.exp.checkpoint_dir, config.exp.final_weights)
-
-    #model.load_state_dict(torch.load(model_path), strict=True)
+    model = resnet_cam.ResNet(n_classes=config.dataset.n_classes, backbone=config.exp.backbone)
+    model_path = os.path.join(config.exp.backbone, config.exp.checkpoint_dir, config.exp.final_weights)
+    #model = nn.DataParallel(model)
+    state_dict = torch.load(model_path)
+    new_state_dict = OrderedDict()
+    for k, v in state_dict.items():
+        k = k.replace('module.', '')
+        new_state_dict[k] = v
+    model.load_state_dict(state_dict=new_state_dict, strict=True)
     model.eval()
 
     #_infer_cam(model=)
+    print('Inferring...')
     multiprocessing.spawn(_infer_cam, nprocs=n_gpus, args=(model, split_dataset, config), join=True)
 
     torch.cuda.empty_cache()

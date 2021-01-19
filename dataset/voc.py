@@ -96,11 +96,13 @@ class VOClassificationDatasetMultiScale(VOCDataset):
                 img = imutils.img_rescaling(image, scale_factor=scale)
 
             img, mask = self._augmentation(img, mask)
-            img_list.append(img)
-            #img = imutils.img_normalize(img)
-            #img = imutils.img_to_CHW(img)
+            img_lr = np.flip(img, -1)
 
-            #img_lr = np.flip(img, -1)
+            img_expand = np.expand_dims(img, 0)
+            img_lr_expand = np.expand_dims(img_lr, 0)
+            img_ = np.concatenate((img_expand, img_lr_expand), axis=0)
+
+            img_list.append(img_)
             
         #image, mask = self._augmentation(image, mask)
         label = get_label_from_mask(mask, n_classes=self.n_classes)

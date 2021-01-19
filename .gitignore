@@ -1,3 +1,3 @@
 *.pyc
-resnet_cam/runs
-resnet_cam/checkpoint
+resnet50/runs
+resnet50/checkpoint
