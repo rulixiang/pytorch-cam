@@ -30,6 +30,14 @@ def img_random_flipud(image, mask=None):
     
     return image, mask
 
+def img_rescaling(image, scale_factor=1.0):
+
+    h, w, _ = image.shape
+    new_scale = [int(scale_factor * w), int(scale_factor * h)]
+    new_image = Image.fromarray(image.astype(np.uint8)).resize(new_scale, resample=Image.BILINEAR)
+    new_image = np.asarray(new_image)
+    return new_image.copy()
+
 def img_random_scaling(image, mask=None, scales=None):
     scale = random.choice(scales)
     h, w, _ = image.shape
@@ -38,6 +46,7 @@ def img_random_scaling(image, mask=None, scales=None):
     new_image = np.asarray(new_image).astype(np.float32)
     if mask is not None:
         mask = Image.fromarray(mask.astype(np.uint8)).resize(new_scale, resample=Image.NEAREST)
+        mask = np.asarray(mask)
     
     return new_image, mask
 

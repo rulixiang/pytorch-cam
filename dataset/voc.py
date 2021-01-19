@@ -21,7 +21,7 @@ def get_label_from_mask(mask, n_classes=0):
     return oht_label
 
 class VOCDataset(Dataset):
-    def __init__(self, root_dir=None, txt_dir=None, split='train', crop_size=None, scales=None,):
+    def __init__(self, root_dir=None, txt_dir=None, split='train', crop_size=None, scales=None, random_crop=False, random_fliplr=False, random_scaling=False):
         # super()
         # stage: train, val, test
         self.root_dir = root_dir
@@ -29,6 +29,9 @@ class VOCDataset(Dataset):
         self.name_list = load_txt(self.txt_name)
         self.crop_size = crop_size
         self.scales = scales
+        self.random_scaling = random_scaling
+        self.random_crop = random_crop
+        self.random_fliplr = random_fliplr
         #self.img_transforms = transforms.Compose([transforms.ToTensor(),])
 
     def __len__(self):
@@ -46,35 +49,68 @@ class VOCDataset(Dataset):
 
     def _augmentation(self, image=None, mask=None):
 
-        image, mask = imutils.img_random_scaling(image, mask, scales=self.scales)
+        if self.random_scaling:
+            image, mask = imutils.img_random_scaling(image, mask, scales=self.scales)
+
         image = imutils.img_normalize(image)
-        image, mask = imutils.img_random_fliplr(image, mask, )
-        image, mask = imutils.img_random_crop(image, mask, crop_size=self.crop_size)
+
+        if self.random_fliplr:
+            image, mask = imutils.img_random_fliplr(image, mask, )
+
+        if self.random_crop:
+            image, mask = imutils.img_random_crop(image, mask, crop_size=self.crop_size)
+
         image = imutils.img_to_CHW(image)
 
         return image, mask
 
 class VOClassificationDataset(VOCDataset):
-    def __init__(self, root_dir, txt_dir=None, n_classes=20, split='train', augment=True, crop_size=None, scales=None, resize_long=None):
-        super(VOClassificationDataset, self).__init__(root_dir, txt_dir, split, crop_size, scales)
-        self.resize_long = resize_long
+    def __init__(self, root_dir, txt_dir=None, n_classes=20, split='train', crop_size=None, scales=None, random_crop=False, random_fliplr=False, random_scaling=False):
+        super(VOClassificationDataset, self).__init__(root_dir, txt_dir, split, crop_size, scales, random_crop, random_fliplr, random_scaling)
+
         self.n_classes = n_classes
-        self.augment = augment
 
     def __getitem__(self, idx):
 
         image, mask = self._load_image(idx)
-        if self.augment:
-            image, mask = self._augmentation(image, mask)
+        image, mask = self._augmentation(image, mask)
         label = get_label_from_mask(mask, n_classes=self.n_classes)
         
         return self.name_list[idx], image, label
 
+class VOClassificationDatasetMultiScale(VOCDataset):
+    def __init__(self, root_dir, txt_dir=None, n_classes=20, split='train', scales=None,):
+        super(VOClassificationDatasetMultiScale, self).__init__(root_dir, txt_dir, split, scales=scales)
+
+        self.n_classes = n_classes
+
+    def __getitem__(self, idx):
+
+        image, mask = self._load_image(idx)
+
+        img_list = []
+        for scale in self.scales:
+            if scale == 1:
+                img = image
+            else:
+                img = imutils.img_rescaling(image, scale_factor=scale)
+
+            img, mask = self._augmentation(img, mask)
+            img_list.append(img)
+            #img = imutils.img_normalize(img)
+            #img = imutils.img_to_CHW(img)
+
+            #img_lr = np.flip(img, -1)
+            
+        #image, mask = self._augmentation(image, mask)
+        label = get_label_from_mask(mask, n_classes=self.n_classes)
+        
+        return self.name_list[idx], img_list, label
+
 
 if __name__ == "__main__":
-    root_dir = '/data1/rlx/VOC2012/VOCdevkit/VOC2012'
-    txt_file = '/data1/rlx/my_cam/dataset/voc'
-    voc12dataset = VOClassificationDataset(root_dir=root_dir, txt_dir = 'dataset/voc', split='train', crop_size=321, scales=[0.5, 0.75, 1.0, 1.25, 1.5])
-    loader = DataLoader(voc12dataset, batch_size=4, shuffle=True, num_workers=4)
+    root_dir = '/home/rlx/VOCdevkit/VOC2012'
+    voc12dataset = VOClassificationDatasetMultiScale(root_dir=root_dir, txt_dir = 'dataset/voc', split='train', scales=[0.5, 0.75, 1.0, 1.25, 1.5])
+    loader = DataLoader(voc12dataset, batch_size=1, shuffle=True, num_workers=4)
     for i, batch in tqdm(enumerate(loader),total=len(loader)):
         print(i)

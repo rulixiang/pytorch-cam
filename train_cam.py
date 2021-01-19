@@ -54,7 +54,7 @@ def get_params(model, key):
                 if m[0]=='module.classifier':
                     yield m[1].bias
 
-def validate(model=None, criterion=None, data_loader=None, writer=None):
+def validate(model=None, data_loader=None,):
 
     print('Validating...')
 
@@ -68,7 +68,7 @@ def validate(model=None, criterion=None, data_loader=None, writer=None):
             #inputs = inputs.to()
             #labels = labels.to(inputs.device)
 
-            outputs = model(inputs)
+            outputs, _ = model(inputs)
             labels = labels.to(outputs.device)
 
             loss = F.multilabel_soft_margin_loss(outputs, labels)
@@ -83,11 +83,11 @@ def train(config=None):
 
     num_workers = config.train.batch_size * 2 
 
-    train_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, augment=True, n_classes=config.dataset.n_classes, split=config.train.split, crop_size=config.train.crop_size, scales=config.train.scales)
+    train_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, n_classes=config.dataset.n_classes, split=config.train.split, crop_size=config.train.crop_size, scales=config.train.scales, random_crop=True, random_fliplr=True, random_scaling=True)
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.train.batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, drop_last=True)
 
-    val_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, augment=True, n_classes=config.dataset.n_classes, split=config.val.split, crop_size=config.train.crop_size, scales=config.train.scales)
+    val_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, n_classes=config.dataset.n_classes, split=config.val.split, crop_size=config.train.crop_size, scales=config.train.scales, random_crop=True, random_fliplr=False, random_scaling=False)
 
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.train.batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, drop_last=False)
 
@@ -150,7 +150,7 @@ def train(config=None):
 
             _, inputs, labels = data
             inputs =  inputs.to(device)
-            outputs = model(inputs)
+            outputs, cam = model(inputs)
             labels = labels.to(device)
 
             # zero the parameter gradients
@@ -203,4 +203,5 @@ def train(config=None):
 if __name__=="__main__":
 
     config = OmegaConf.load(args.config)
+    print('configs: %s'%config)
     train(config)

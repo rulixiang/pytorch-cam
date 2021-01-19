@@ -34,7 +34,7 @@ class ResNet_CAM(nn.Module):
         x4 = self.stage4(x3)
 
         out = F.adaptive_avg_pool2d(x4, (1,1))
-        out = self.classifier(x4)
+        out = self.classifier(out)
         out = out.view(-1, self.n_classes)
 
         cam = F.conv2d(x4, self.classifier.weight)
@@ -51,8 +51,7 @@ class ResNet_CAM(nn.Module):
         x4 = self.stage4(x3)
 
         cam = F.conv2d(x4, self.classifier.weight)
-        cam = F.relu(cam)   
-        cam = torch.max(cam[0])
+        cam = F.relu(cam)
 
         return cam
 

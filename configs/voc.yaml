@@ -1,5 +1,5 @@
 exp:
-  path: resnet_cam
+  path: resnet50
   checkpoint_dir: checkpoint
   tensorboard_dir: runs
   preds: preds
