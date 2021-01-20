@@ -2,9 +2,9 @@ exp:
   backbone: resnet50
   checkpoint_dir: checkpoint
   tensorboard_dir: runs
-  preds: preds
-  cam: cam
-  results: results
+  preds_dir: preds
+  cam_dir: cam
+  results_dir: results
   final_weights: resnet_cam.pth
 
 dataset:
