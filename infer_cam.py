@@ -38,11 +38,19 @@ def _infer_cam(pid, model=None, dataset=None, config=None):
 
             #inputs = inputs.to()
             #labels = labels.to(inputs.device)
+            img_size = input_list[0].shape[-2:]
+            cam_list = []
             for inputs in input_list:
                 inputs =  inputs[0].cuda()
-                _, outputs = model(inputs)
+                outputs, cams = model(inputs)
+                cams_ = torch.max(cams[0], cams[1].flip(-1))
+                cam_list.append(cams_)
                 labels = labels.to(outputs.device)
-
+            
+            resized_cam_list = [F.interpolate(torch.unsqueeze(cam, 1), img_size, mode='bilinear', align_corners=False) for cam in cam_list]
+            out_cam = torch.sum(torch.stack(resized_cam_list, dim=0), dim=0)
+            valid_label = torch.nonzero(labels[0])[:,0]
+            valid_cam = out_cam[valid_label,0,:,:]
             #loss = F.multilabel_soft_margin_loss(outputs, labels)
     return None
 
@@ -71,6 +79,9 @@ def main(config=None):
 
     #_infer_cam(model=)
     print('Inferring...')
+
+    makedirs(os.path.join(config.exp.backbone, config.exp.cam_dir))
+
     multiprocessing.spawn(_infer_cam, nprocs=n_gpus, args=(model, split_dataset, config), join=True)
 
     torch.cuda.empty_cache()
