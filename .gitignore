@@ -1,3 +1,4 @@
 *.pyc
 resnet50/runs
 resnet50/checkpoint
+*.npy

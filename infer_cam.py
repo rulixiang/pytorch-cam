@@ -30,11 +30,12 @@ def _infer_cam(pid, model=None, dataset=None, config=None):
 
     data_loader = torch.utils.data.DataLoader(dataset[pid], batch_size=1, shuffle=False, num_workers=2, pin_memory=False)
     model.eval()
-
+    cam_dir = os.path.join(config.exp.backbone, config.exp.cam_dir)
+    makedirs(cam_dir)
     with torch.no_grad(), torch.cuda.device(pid):
         model.cuda()
         for _, data in tqdm(enumerate(data_loader), total=len(data_loader), ascii=' 123456789#'):
-            _, input_list, labels = data
+            img_name, input_list, labels = data
 
             #inputs = inputs.to()
             #labels = labels.to(inputs.device)
@@ -52,6 +53,7 @@ def _infer_cam(pid, model=None, dataset=None, config=None):
             valid_label = torch.nonzero(labels[0])[:,0]
             valid_cam = out_cam[valid_label,0,:,:]
             #loss = F.multilabel_soft_margin_loss(outputs, labels)
+            np.save(os.path.join(cam_dir, img_name[0] + '.npy'), {"keys": valid_label, "high_res": valid_cam.cpu().numpy()})
     return None
 
 def main(config=None):

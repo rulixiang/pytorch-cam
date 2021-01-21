@@ -13,10 +13,7 @@ dataset:
   n_classes: 20
   mean_bgr: [104.008, 116.669, 122.675]
   std_bgr: [104.008, 116.669, 122.675]
-
-model:
-  blocks: [3, 4, 23, 3]
-
+  
 train:
   split: train_aug
   batch_size: 16
