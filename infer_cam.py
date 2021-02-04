@@ -53,7 +53,7 @@ def _infer_cam(pid, model=None, dataset=None, config=None):
             valid_label = torch.nonzero(labels[0])[:,0]
             valid_cam = out_cam[valid_label,0,:,:]
             #loss = F.multilabel_soft_margin_loss(outputs, labels)
-            np.save(os.path.join(cam_dir, img_name[0] + '.npy'), {"keys": valid_label, "high_res": valid_cam.cpu().numpy()})
+            np.save(os.path.join(cam_dir, img_name[0] + '.npy'), {"keys": valid_label.cpu().numpy(), "high_res": valid_cam.cpu().numpy()})
     return None
 
 def main(config=None):
