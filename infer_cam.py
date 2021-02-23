@@ -5,7 +5,7 @@ from datetime import datetime
 
 TIMESTAMP = "{0:%Y-%m-%d-%H-%M-%S/}".format(datetime.now())
 parser = argparse.ArgumentParser()
-parser.add_argument("--gpu", default='0,1', type=str, help="gpu")
+parser.add_argument("--gpu", default='0,1,2', type=str, help="gpu")
 parser.add_argument("--config", default='configs/voc.yaml', type=str, help="config")
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
@@ -36,22 +36,22 @@ def _infer_cam(pid, model=None, dataset=None, config=None):
         model.cuda()
         for _, data in tqdm(enumerate(data_loader), total=len(data_loader), ascii=' 123456789#'):
             img_name, input_list, labels = data
-
             #inputs = inputs.to()
             #labels = labels.to(inputs.device)
             img_size = input_list[0].shape[-2:]
             cam_list = []
             for inputs in input_list:
-                inputs =  inputs[0].cuda()
+                inputs = inputs[0].cuda()
                 outputs, cams = model(inputs)
                 cams_ = torch.max(cams[0], cams[1].flip(-1))
                 cam_list.append(cams_)
-                labels = labels.to(outputs.device)
+                #labels = labels.to(outputs.device)
             
             resized_cam_list = [F.interpolate(torch.unsqueeze(cam, 1), img_size, mode='bilinear', align_corners=False) for cam in cam_list]
             out_cam = torch.sum(torch.stack(resized_cam_list, dim=0), dim=0)
             valid_label = torch.nonzero(labels[0])[:,0]
             valid_cam = out_cam[valid_label,0,:,:]
+            valid_cam /= F.adaptive_max_pool2d(valid_cam, (1, 1)) + 1e-5
             #loss = F.multilabel_soft_margin_loss(outputs, labels)
             np.save(os.path.join(cam_dir, img_name[0] + '.npy'), {"keys": valid_label.cpu().numpy(), "high_res": valid_cam.cpu().numpy()})
     return None
@@ -70,7 +70,7 @@ def main(config=None):
     # build and initialize model
     model = resnet_cam.ResNet(n_classes=config.dataset.n_classes, backbone=config.exp.backbone)
     model_path = os.path.join(config.exp.backbone, config.exp.checkpoint_dir, config.exp.final_weights)
-    
+
     #model = nn.DataParallel(model)
     state_dict = torch.load(model_path)
     new_state_dict = OrderedDict()
