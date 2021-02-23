@@ -87,7 +87,7 @@ def train(config=None):
 
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=config.train.batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, drop_last=True)
 
-    val_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, n_classes=config.dataset.n_classes, split=config.val.split, random_crop=True, random_fliplr=False, random_scaling=False)
+    val_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, n_classes=config.dataset.n_classes, split=config.val.split, crop_size=config.train.crop_size, random_crop=True, random_fliplr=False, random_scaling=False)
 
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=config.train.batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, drop_last=False)
 
