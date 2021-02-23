@@ -70,6 +70,7 @@ def main(config=None):
     # build and initialize model
     model = resnet_cam.ResNet(n_classes=config.dataset.n_classes, backbone=config.exp.backbone)
     model_path = os.path.join(config.exp.backbone, config.exp.checkpoint_dir, config.exp.final_weights)
+    
     #model = nn.DataParallel(model)
     state_dict = torch.load(model_path)
     new_state_dict = OrderedDict()

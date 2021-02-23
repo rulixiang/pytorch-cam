@@ -30,7 +30,7 @@ if __name__=="__main__":
     preds = []
     labels = []
 
-    for i in tqdm(eval_list, total=len(eval_list), dynamic_ncols=True):
+    for i in tqdm(eval_list, total=len(eval_list), dynamic_ncols=True, ascii=" 123456789#"):
         npy_name = os.path.join(npy_dir, i) + '.npy'
         cam_dict = np.load(npy_name, allow_pickle=True).item()
         label = misc.imread(os.path.join(label_dir, i) + '.png')
