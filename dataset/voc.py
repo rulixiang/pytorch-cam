@@ -42,7 +42,7 @@ class VOCDataset(Dataset):
         image_path = os.path.join(self.root_dir, 'JPEGImages', self.name_list[idx]+'.jpg')
         mask_path = os.path.join(self.root_dir, 'SegmentationClassAug', self.name_list[idx]+'.png')
 
-        image = misc.imread(image_path).astype(np.float32)
+        image = misc.imread(image_path)#.astype(np.float32)
         mask = misc.imread(mask_path)
 
         return image, mask

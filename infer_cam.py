@@ -42,7 +42,7 @@ def _infer_cam(pid, model=None, dataset=None, config=None):
             cam_list = []
             for inputs in input_list:
                 inputs = inputs[0].cuda()
-                outputs, cams = model(inputs)
+                _, cams = model(inputs)
                 cams_ = torch.max(cams[0], cams[1].flip(-1))
                 cam_list.append(cams_)
                 #labels = labels.to(outputs.device)

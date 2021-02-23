@@ -7,6 +7,8 @@ def img_to_CHW(image):
 
 def img_normalize(image, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
 
+    image = image.astype(np.float32)
+
     image[:, :, 0] = (image[:, :, 0] / 255. - mean[0]) / std[0]
     image[:, :, 1] = (image[:, :, 1] / 255. - mean[1]) / std[1]
     image[:, :, 2] = (image[:, :, 2] / 255. - mean[2]) / std[2]
@@ -33,7 +35,7 @@ def img_random_flipud(image, mask=None):
 def img_rescaling(image, scale_factor=1.0):
 
     h, w, _ = image.shape
-    new_scale = [int(scale_factor * w), int(scale_factor * h)]
+    new_scale = [int(scale_factor * h), int(scale_factor * w)]
     new_image = Image.fromarray(image.astype(np.uint8)).resize(new_scale, resample=Image.BILINEAR)
     new_image = np.asarray(new_image).astype(np.float32)
     return new_image.copy()
