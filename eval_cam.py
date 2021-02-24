@@ -21,7 +21,7 @@ def load_txt(txt_name):
 
 if __name__=="__main__":
     config = OmegaConf.load(args.config)
-    print('configs: %s'%config)
+    print('\nEvaluating:')
     txt_name = os.path.join(config.dataset.txt_dir, args.eval_set) + '.txt'
     eval_list = load_txt(txt_name)
     npy_dir = os.path.join(config.exp.backbone, config.exp.cam_dir)

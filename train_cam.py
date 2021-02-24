@@ -38,21 +38,11 @@ def get_params(model, key):
             if isinstance(m[1], nn.Conv2d):
                 if m[0]!='module.classifier':
                     yield m[1].weight
-    if key == '2x':
-        for m in model.named_modules():
-            if isinstance(m[1], nn.Conv2d):
-                if m[0]!='module.classifier':
-                    yield m[1].bias
     if key == '10x':
         for m in model.named_modules():
             if isinstance(m[1], nn.Conv2d):
                 if m[0]=='module.classifier':
                     yield m[1].weight
-    if key == '20x':
-        for m in model.named_modules():
-            if isinstance(m[1], nn.Conv2d):
-                if m[0]=='module.classifier':
-                    yield m[1].bias
 
 def validate(model=None, data_loader=None,):
 
