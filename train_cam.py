@@ -43,6 +43,27 @@ def get_params(model, key):
             if isinstance(m[1], nn.Conv2d):
                 if m[0]=='module.classifier':
                     yield m[1].weight
+    if key == 'aux':
+        for m in model.named_parameters():
+            if isinstance(m[1], nn.Conv2d):
+                if m[0]!='module.classifier':
+                    print(m[0])
+                    yield m[1].weight
+
+def get_params2(model, key):
+
+    if key == '1x':
+        for p in model.named_parameters():
+            if 'conv' in p[0]:
+                yield p[1]
+    if key == '10x':
+        for p in model.named_parameters():
+            if 'classifier' in p[0]:
+                yield p[1]
+    if key == 'aux':
+        for p in model.named_parameters():
+            if 'fc_' in p[0] or 'centroid' in p[0]:
+                yield p[1]
 
 def validate(model=None, data_loader=None,):
 
@@ -110,12 +131,12 @@ def train(config=None):
         # 
         params=[
             {
-                "params": get_params(model, key="1x"),
+                "params": get_params2(model, key="1x"),
                 "lr": config.train.opt.learning_rate,
                 "weight_decay": config.train.opt.weight_decay,
             },
             {
-                "params": get_params(model, key="10x"),
+                "params": get_params2(model, key="10x"),
                 "lr": 10 * config.train.opt.learning_rate,
                 "weight_decay": config.train.opt.weight_decay,
             },
