@@ -10,21 +10,16 @@ parser.add_argument("--config", default='configs/voc.yaml', type=str, help="conf
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
-from collections import OrderedDict
-
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from omegaconf import OmegaConf
-from PIL import Image
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-import utils
 from dataset import voc
 from net import resnet_cam
-from utils import imutils, pyutils
+from utils import pyutils
 
 def makedirs(path):
     if os.path.exists(path) is False:
@@ -92,7 +87,7 @@ def validate(model=None, data_loader=None,):
 def train(config=None):
     # loop over the dataset multiple times
 
-    num_workers = config.train.batch_size * 2 
+    num_workers = os.cpu_count()//2
 
     train_dataset = voc.VOClassificationDataset(root_dir=config.dataset.root_dir, txt_dir=config.dataset.txt_dir, n_classes=config.dataset.n_classes, split=config.train.split, crop_size=config.train.crop_size, scales=config.train.scales, random_crop=True, random_fliplr=True, random_scaling=True)
 
@@ -125,18 +120,19 @@ def train(config=None):
 
 
     model = nn.DataParallel(model)
+    model.train()
     model.to(device)
     
     optimizer = torch.optim.SGD(
         # 
         params=[
             {
-                "params": get_params2(model, key="1x"),
+                "params": get_params(model, key="1x"),
                 "lr": config.train.opt.learning_rate,
                 "weight_decay": config.train.opt.weight_decay,
             },
             {
-                "params": get_params2(model, key="10x"),
+                "params": get_params(model, key="10x"),
                 "lr": 10 * config.train.opt.learning_rate,
                 "weight_decay": config.train.opt.weight_decay,
             },
