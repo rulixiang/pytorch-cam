@@ -3,16 +3,6 @@ import torch.nn.functional as F
 import torch 
 from .resnet import resnet101, resnet50
 
-def spatial_pyramid_hybrid_pool(x, levels=[1,2,4]):
-    n,c,h,w = x.shape
-    gamma = 2
-    x_p = gamma * F.adaptive_avg_pool2d(x, (1,1))
-    for i in levels:
-        pool = F.max_pool2d(x, kernel_size=(h//i, w//i), padding=0)
-        x_p = x_p + F.adaptive_avg_pool2d(pool, (1,1))
-
-    return x_p/(gamma+len(levels))
-
 class ResNet(nn.Module):
 
     def __init__(self, n_classes=20, backbone='resnet50'):
@@ -45,8 +35,7 @@ class ResNet(nn.Module):
         x3 = self.stage3(x2)
         x4 = self.stage4(x3)
 
-        #out = F.adaptive_avg_pool2d(x4, (1,1))
-        out = spatial_pyramid_hybrid_pool(x4)
+        out = F.adaptive_avg_pool2d(x4, (1,1))
         out = self.classifier(out)
         out = out.view(-1, self.n_classes)
 
